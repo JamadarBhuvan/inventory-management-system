@@ -1,6 +1,7 @@
 import os
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.exc import IntegrityError  # NEW: to catch duplicate SKU errors
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -28,21 +29,57 @@ class Product(db.Model):
 def health_check():
     return jsonify({"status": "ok"}), 200
 
+
 @app.route('/products', methods=['POST'])
 def create_product():
-    data = request.get_json()
+    data = request.get_json(silent=True)  # NEW: won't crash on bad JSON
+
+    # NEW: bouncer check 1 - is it even JSON?
+    if data is None:
+        return jsonify({"error": "Request body must be valid JSON"}), 400
+
+    # NEW: bouncer check 2 - required fields present?
+    required_fields = ['name', 'sku', 'quantity', 'price']
+    missing = [f for f in required_fields if f not in data]
+    if missing:
+        return jsonify({"error": f"Missing fields: {', '.join(missing)}"}), 400
+
+    name = data.get('name')
+    sku = data.get('sku')
+    quantity = data.get('quantity')
+    price = data.get('price')
+
+    # NEW: bouncer check 3 - are values sane?
+    if not isinstance(name, str) or not name.strip():
+        return jsonify({"error": "Name must be a non-empty string"}), 400
+
+    if not isinstance(sku, str) or not sku.strip():
+        return jsonify({"error": "SKU must be a non-empty string"}), 400
+
+    if not isinstance(quantity, int) or quantity < 0:
+        return jsonify({"error": "Quantity must be a non-negative integer"}), 400
+
+    if not isinstance(price, (int, float)) or price < 0:
+        return jsonify({"error": "Price must be a non-negative number"}), 400
 
     new_product = Product(
-        name=data['name'],
-        sku=data['sku'],
-        quantity=data['quantity'],
-        price=data['price']
+        name=name.strip(),
+        sku=sku.strip(),
+        quantity=quantity,
+        price=price
     )
 
     db.session.add(new_product)
-    db.session.commit()
 
-    return {"message": "Product created", "id": new_product.id}, 201
+    # NEW: catch duplicate SKU instead of crashing
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": f"Product with SKU '{sku}' already exists"}), 409
+
+    return jsonify({"message": "Product created", "id": new_product.id}), 201
+
 
 @app.route('/products', methods=['GET'])
 def get_products():
@@ -60,6 +97,7 @@ def get_products():
 
     return jsonify(result), 200
 
+
 @app.route('/products/<int:product_id>', methods=['GET'])
 def get_product(product_id):
     product = Product.query.get(product_id)
@@ -75,6 +113,7 @@ def get_product(product_id):
         "price": str(product.price)
     }), 200
 
+
 @app.route('/products/<int:product_id>', methods=['PUT'])
 def update_product(product_id):
     product = Product.query.get(product_id)
@@ -82,16 +121,40 @@ def update_product(product_id):
     if not product:
         return jsonify({"error": "Product not found"}), 404
 
-    data = request.get_json()
+    data = request.get_json(silent=True)  # NEW
+    if data is None:
+        return jsonify({"error": "Request body must be valid JSON"}), 400
 
-    product.name = data.get('name', product.name)
-    product.sku = data.get('sku', product.sku)
-    product.quantity = data.get('quantity', product.quantity)
-    product.price = data.get('price', product.price)
+    # NEW: validate only the fields actually sent (partial update)
+    if 'name' in data:
+        if not isinstance(data['name'], str) or not data['name'].strip():
+            return jsonify({"error": "Name must be a non-empty string"}), 400
+        product.name = data['name'].strip()
 
-    db.session.commit()
+    if 'sku' in data:
+        if not isinstance(data['sku'], str) or not data['sku'].strip():
+            return jsonify({"error": "SKU must be a non-empty string"}), 400
+        product.sku = data['sku'].strip()
+
+    if 'quantity' in data:
+        if not isinstance(data['quantity'], int) or data['quantity'] < 0:
+            return jsonify({"error": "Quantity must be a non-negative integer"}), 400
+        product.quantity = data['quantity']
+
+    if 'price' in data:
+        if not isinstance(data['price'], (int, float)) or data['price'] < 0:
+            return jsonify({"error": "Price must be a non-negative number"}), 400
+        product.price = data['price']
+
+    # NEW: catch duplicate SKU on update too
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": f"Product with SKU '{data.get('sku')}' already exists"}), 409
 
     return jsonify({"message": "Product updated"}), 200
+
 
 @app.route('/products/<int:product_id>', methods=['DELETE'])
 def delete_product(product_id):
@@ -104,6 +167,14 @@ def delete_product(product_id):
     db.session.commit()
 
     return jsonify({"message": "Product deleted"}), 200
+
+
+# NEW: safety net for anything that slips through
+@app.errorhandler(500)
+def server_error(e):
+    db.session.rollback()
+    return jsonify({"error": "Internal server error"}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)
