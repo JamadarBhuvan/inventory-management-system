@@ -3,6 +3,10 @@ from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError  # NEW: to catch duplicate SKU errors
 from dotenv import load_dotenv
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt
+
+
 
 load_dotenv()
 
@@ -11,6 +15,13 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
+
+app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY")
+jwt = JWTManager(app)
+
+from flask_migrate import Migrate
+
+migrate = Migrate(app, db)
 
 class Product(db.Model):
     __tablename__ = 'products'
@@ -24,6 +35,41 @@ class Product(db.Model):
 
     def __repr__(self):
         return f'<Product {self.sku}>'
+
+
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(256), nullable=False)
+    role = db.Column(db.String(20), nullable=False, default='staff')  # 'admin' or 'staff'
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)  
+    
+from flask import request, jsonify
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+
+    if not data or not data.get('username') or not data.get('password'):
+        return jsonify({"error": "username and password required"}), 400
+
+    user = User.query.filter_by(username=data['username']).first()
+
+    if not user or not user.check_password(data['password']):
+        return jsonify({"error": "invalid username or password"}), 401
+
+    access_token = create_access_token(
+        identity=user.username,
+        additional_claims={"role": user.role}
+    )
+
+    return jsonify({"access_token": access_token}), 200
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -98,6 +144,7 @@ def get_products():
     return jsonify(result), 200
 
 
+
 @app.route('/products/<int:product_id>', methods=['GET'])
 def get_product(product_id):
     product = Product.query.get(product_id)
@@ -155,9 +202,13 @@ def update_product(product_id):
 
     return jsonify({"message": "Product updated"}), 200
 
-
 @app.route('/products/<int:product_id>', methods=['DELETE'])
+@jwt_required()
 def delete_product(product_id):
+    claims = get_jwt()
+    if claims.get('role') != 'admin':
+        return jsonify({"error": "Admin access required"}), 403
+
     product = Product.query.get(product_id)
 
     if not product:
