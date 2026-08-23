@@ -228,6 +228,35 @@ def server_error(e):
     db.session.rollback()
     return jsonify({"error": "Internal server error"}), 500
 
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.get_json(silent=True)
+
+    if data is None:
+        return jsonify({"error": "Request body must be valid JSON"}), 400
+
+    username = data.get('username')
+    password = data.get('password')
+
+    if not isinstance(username, str) or not username.strip():
+        return jsonify({"error": "Username must be a non-empty string"}), 400
+
+    if not isinstance(password, str) or not password.strip():
+        return jsonify({"error": "Password must be a non-empty string"}), 400
+
+    # check if username already exists
+    existing_user = User.query.filter_by(username=username.strip()).first()
+    if existing_user:
+        return jsonify({"error": f"Username '{username}' already taken"}), 409
+
+    new_user = User(username=username.strip(), role='staff')  # always staff, no exceptions
+    new_user.set_password(password)
+
+    db.session.add(new_user)
+    db.session.commit()
+
+    return jsonify({"message": "User registered successfully", "username": new_user.username}), 201
+
 
 if __name__ == '__main__':
     app.run(debug=True)
