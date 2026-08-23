@@ -77,6 +77,7 @@ def health_check():
 
 
 @app.route('/products', methods=['POST'])
+@jwt_required() 
 def create_product():
     data = request.get_json(silent=True)  # NEW: won't crash on bad JSON
 
@@ -162,6 +163,7 @@ def get_product(product_id):
 
 
 @app.route('/products/<int:product_id>', methods=['PUT'])
+@jwt_required()
 def update_product(product_id):
     product = Product.query.get(product_id)
 
