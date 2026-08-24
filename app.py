@@ -5,8 +5,7 @@ from sqlalchemy.exc import IntegrityError  # NEW: to catch duplicate SKU errors
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt
-
-
+from flasgger import Swagger
 
 load_dotenv()
 
@@ -22,6 +21,8 @@ jwt = JWTManager(app)
 from flask_migrate import Migrate
 
 migrate = Migrate(app, db)
+
+swagger = Swagger(app)
 
 class Product(db.Model):
     __tablename__ = 'products'
