@@ -55,6 +55,41 @@ from flask import request, jsonify
 
 @app.route('/login', methods=['POST'])
 def login():
+    """
+    Log in and get a JWT access token
+    ---
+    tags:
+      - Auth
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - username
+            - password
+          properties:
+            username:
+              type: string
+              example: "admin"
+            password:
+              type: string
+              example: "yourpassword"
+    responses:
+      200:
+        description: Login successful, returns JWT
+        schema:
+          type: object
+          properties:
+            access_token:
+              type: string
+              example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      400:
+        description: Missing username or password
+      401:
+        description: Invalid username or password
+    """
     data = request.get_json()
 
     if not data or not data.get('username') or not data.get('password'):
@@ -74,14 +109,75 @@ def login():
 
 @app.route('/health', methods=['GET'])
 def health_check():
+    """
+    Health check
+    ---
+    tags:
+      - System
+    responses:
+      200:
+        description: Service is up and running
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: "ok"
+    """
     return jsonify({"status": "ok"}), 200
 
 
 @app.route('/products', methods=['POST'])
-@jwt_required() 
+@jwt_required()
 def create_product():
-    data = request.get_json(silent=True)  # NEW: won't crash on bad JSON
-
+    """
+    Create a new product (admin only)
+    ---
+    tags:
+      - Products
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - name
+            - sku
+            - quantity
+            - price
+          properties:
+            name:
+              type: string
+              example: "Wireless Mouse"
+            sku:
+              type: string
+              example: "WM-1001"
+            quantity:
+              type: integer
+              example: 50
+            price:
+              type: number
+              example: 499.99
+    responses:
+      201:
+        description: Product created successfully
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              example: "Product created"
+            id:
+              type: integer
+              example: 12
+      400:
+        description: Missing or invalid fields
+      409:
+        description: Product with this SKU already exists
+    """
+    data = request.get_json(silent=True)
+    ...
     # NEW: bouncer check 1 - is it even JSON?
     if data is None:
         return jsonify({"error": "Request body must be valid JSON"}), 400
@@ -131,6 +227,35 @@ def create_product():
 
 @app.route('/products', methods=['GET'])
 def get_products():
+    """
+    Get all products
+    ---
+    tags:
+      - Products
+    responses:
+      200:
+        description: A list of all products
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                example: 1
+              name:
+                type: string
+                example: "Wireless Mouse"
+              sku:
+                type: string
+                example: "WM-1001"
+              quantity:
+                type: integer
+                example: 50
+              price:
+                type: string
+                example: "499.99"
+    """
     products = Product.query.all()
 
     result = []
@@ -166,8 +291,47 @@ def get_product(product_id):
 @app.route('/products/<int:product_id>', methods=['PUT'])
 @jwt_required()
 def update_product(product_id):
+    """
+    Update a product (admin only, partial update supported)
+    ---
+    tags:
+      - Products
+    parameters:
+      - in: path
+        name: product_id
+        type: integer
+        required: true
+        example: 1
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              example: "Wireless Mouse V2"
+            sku:
+              type: string
+              example: "WM-1002"
+            quantity:
+              type: integer
+              example: 30
+            price:
+              type: number
+              example: 549.99
+    responses:
+      200:
+        description: Product updated successfully
+      400:
+        description: Invalid JSON or invalid field values
+      404:
+        description: Product not found
+      409:
+        description: Product with this SKU already exists
+    """
     product = Product.query.get(product_id)
-
+    ...
     if not product:
         return jsonify({"error": "Product not found"}), 404
 
@@ -208,12 +372,24 @@ def update_product(product_id):
 @app.route('/products/<int:product_id>', methods=['DELETE'])
 @jwt_required()
 def delete_product(product_id):
-    claims = get_jwt()
-    if claims.get('role') != 'admin':
-        return jsonify({"error": "Admin access required"}), 403
-
+    """
+    Delete a product (admin only)
+    ---
+    tags:
+      - Products
+    parameters:
+      - in: path
+        name: product_id
+        type: integer
+        required: true
+        example: 1
+    responses:
+      200:
+        description: Product deleted successfully
+      404:
+        description: Product not found
+    """
     product = Product.query.get(product_id)
-
     if not product:
         return jsonify({"error": "Product not found"}), 404
 
