@@ -274,6 +274,39 @@ def get_products():
 
 @app.route('/products/<int:product_id>', methods=['GET'])
 def get_product(product_id):
+    """
+    Get a single product by ID
+    ---
+    tags:
+      - Products
+    parameters:
+      - name: product_id
+        in: path
+        type: integer
+        required: true
+        description: ID of the product to fetch
+    responses:
+      200:
+        description: The product with the given ID
+        schema:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 1
+            name:
+              type: string
+              example: "Wireless Mouse"
+            quantity:
+              type: integer
+              example: 50
+            price:
+              type: number
+              example: 499.99
+      404:
+        description: Product not found
+    """
+    # ...your existing code stays exactly as is
     product = Product.query.get(product_id)
 
     if not product:
@@ -407,8 +440,35 @@ def server_error(e):
 
 @app.route('/register', methods=['POST'])
 def register():
+    """
+    Register a new user
+    ---
+    tags:
+      - Auth
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - username
+            - password
+          properties:
+            username:
+              type: string
+              example: "john_doe"
+            password:
+              type: string
+              example: "strongpassword123"
+    responses:
+      201:
+        description: User registered successfully
+      400:
+        description: Invalid input or user already exists
+    """
     data = request.get_json(silent=True)
-
+    # ...rest of your existing code stays exactly as is
     if data is None:
         return jsonify({"error": "Request body must be valid JSON"}), 400
 
