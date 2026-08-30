@@ -152,6 +152,10 @@ def create_product():
     ---
     tags:
       - Products
+
+    security:
+    - Bearer: []
+
     parameters:
       - in: body
         name: body
@@ -346,6 +350,8 @@ def update_product(product_id):
     ---
     tags:
       - Products
+    security:
+      - Bearer: []
     parameters:
       - in: path
         name: product_id
@@ -427,6 +433,10 @@ def delete_product(product_id):
     ---
     tags:
       - Products
+
+    security:
+      - Bearer: []
+
     parameters:
       - in: path
         name: product_id
