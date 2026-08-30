@@ -22,7 +22,24 @@ from flask_migrate import Migrate
 
 migrate = Migrate(app, db)
 
-swagger = Swagger(app)
+swagger_template = {
+    "swagger": "2.0",
+    "info": {
+        "title": "StockFlow API",
+        "description": "Inventory Management System API",
+        "version": "0.0.1"
+    },
+    "securityDefinitions": {
+        "Bearer": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
+            "description": "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\""
+        }
+    }
+}
+
+swagger = Swagger(app, template=swagger_template)
 
 class Product(db.Model):
     __tablename__ = 'products'
@@ -465,7 +482,9 @@ def register():
       201:
         description: User registered successfully
       400:
-        description: Invalid input or user already exists
+        description: Invalid input (missing or empty username/password)
+      409:
+        description: Username already taken
     """
     data = request.get_json(silent=True)
     # ...rest of your existing code stays exactly as is
