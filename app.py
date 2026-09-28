@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt
 from flasgger import Swagger
+from functools import wraps
 
 load_dotenv()
 
@@ -17,6 +18,13 @@ db = SQLAlchemy(app)
 
 app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY")
 jwt = JWTManager(app)
+def admin_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if get_jwt().get("role") != "admin":
+            return jsonify({"error": "Admin access required"}), 403
+        return fn(*args, **kwargs)
+    return wrapper
 
 from flask_migrate import Migrate
 
@@ -146,6 +154,7 @@ def health_check():
 
 @app.route('/products', methods=['POST'])
 @jwt_required()
+@admin_required
 def create_product():
     """
     Create a new product (admin only)
@@ -344,6 +353,7 @@ def get_product(product_id):
 
 @app.route('/products/<int:product_id>', methods=['PUT'])
 @jwt_required()
+@admin_required
 def update_product(product_id):
     """
     Update a product (admin only, partial update supported)
@@ -427,6 +437,7 @@ def update_product(product_id):
 
 @app.route('/products/<int:product_id>', methods=['DELETE'])
 @jwt_required()
+@admin_required
 def delete_product(product_id):
     """
     Delete a product (admin only)

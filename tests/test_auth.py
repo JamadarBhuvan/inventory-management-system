@@ -23,12 +23,25 @@ def test_create_product_no_token_fails(client):
     assert response.status_code == 401
 
 
-def test_create_product_with_token_succeeds(client, staff_token):
+def test_create_product_with_admin_token_succeeds(client, admin_token):
     response = client.post('/products',
         json={"name": "Widget", "sku": "W-TEST-1", "quantity": 10, "price": 50},
-        headers={"Authorization": f"Bearer {staff_token}"})
+        headers={"Authorization": f"Bearer {admin_token}"})
     assert response.status_code in (201, 409)  # 409 if SKU exists from a prior run
 
+
+def test_create_product_with_staff_token_returns_403(client, staff_token):
+    response = client.post('/products',
+        json={"name": "Widget", "sku": "W-TEST-2", "quantity": 10, "price": 50},
+        headers={"Authorization": f"Bearer {staff_token}"})
+    assert response.status_code == 403
+
+
+def test_update_product_with_staff_token_returns_403(client, staff_token):
+    response = client.put('/products/2',
+        json={"quantity": 99},
+        headers={"Authorization": f"Bearer {staff_token}"})
+    assert response.status_code == 403
 
 def test_update_product_no_token_fails(client):
     response = client.put('/products/2', json={"quantity": 99})
