@@ -508,7 +508,6 @@ def register():
         description: Username already taken
     """
     data = request.get_json(silent=True)
-    # ...rest of your existing code stays exactly as is
     if data is None:
         return jsonify({"error": "Request body must be valid JSON"}), 400
 

@@ -1,5 +1,13 @@
 # StockFlow — Inventory Management System API
 
+## Live Demo
+- API: https://inventory-management-system-9x04.onrender.com
+- Swagger docs: https://inventory-management-system-9x04.onrender.com/apidocs
+
+> Hosted on Render's free tier, so the first request after idle can take 30-60 seconds to wake up.
+
+**Roles:** Admin can create, update and delete products. Staff can view only.
+
 A RESTful inventory management backend built with Flask, PostgreSQL, and Docker — featuring JWT authentication, role-based access control (RBAC), and interactive Swagger API documentation.
 
 ## Features
