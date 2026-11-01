@@ -108,5 +108,5 @@ inventory-management-system/
 
 ## Author
 
-**Bhuvan Jamadar**
+**Jamadar Bhuvan**
 [GitHub](https://github.com/JamadarBhuvan)
