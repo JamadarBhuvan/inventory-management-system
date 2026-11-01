@@ -50,7 +50,7 @@ You can log in, authorize with a JWT token, and test every endpoint directly fro
 
 1. Clone the repository
 ```bash
-   git clone https://github.com/rahuljamadar174-wq/inventory-management-system.git
+   git clone https://github.com/JamadarBhuvan/inventory-management-system.git
    cd inventory-management-system
 ```
 
@@ -109,4 +109,4 @@ inventory-management-system/
 ## Author
 
 **Bhuvan Jamadar**
-[GitHub](https://github.com/rahuljamadar174-wq)
+[GitHub](https://github.com/JamadarBhuvan)
